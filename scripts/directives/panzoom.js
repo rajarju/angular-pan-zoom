@@ -111,6 +111,8 @@ angular.module('panzoom', ['monospaced.mousewheel'])
             $scope.config.chromeUseTransform = $scope.config.chromeUseTransform ?
               $scope.config.chromeUseTransform : false;
 
+            $scope.config.callback = $scope.config.callback ?
+              $scope.config.callback : function() {};
 
             var calcZoomToFit = function(rect) {
               // let (W, H) denote the size of the viewport
@@ -166,6 +168,9 @@ angular.module('panzoom', ['monospaced.mousewheel'])
             // private
 
             var syncModelToDOM = function() {
+
+              $scope.config.callback($scope.model);
+
               if ($scope.zoomAnimation) {
                 $scope.model.zoomLevel = $scope.base.zoomLevel + $scope.zoomAnimation
                   .deltaZoomLevel * $scope.zoomAnimation.progress;
