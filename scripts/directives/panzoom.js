@@ -276,7 +276,7 @@ angular.module('panzoom', ['monospaced.mousewheel'])
               }
 
               // keep zoom level in bounds
-              var minimumAllowedZoomLevel = $scope.minimumAllowedZoomLevel ||
+              var minimumAllowedZoomLevel = $scope.config.minimumAllowedZoomLevel ||
                 0;
               newZoomLevel = Math.max(minimumAllowedZoomLevel,
                 newZoomLevel);
