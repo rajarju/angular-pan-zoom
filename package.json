@@ -26,8 +26,8 @@
   },
   "scripts": {
     "start": "bower install && npm run build:js:watch & npm run build:css:watch & browser-sync start --server --files \"demo/*,build/*\" --startPath \"demo/demo.dev.html\"",
-    "prebuild": "npm run lint && npm run test",
-    "build": "npm run build:js && npm run build:js:minified && npm run build:css",
+    "prebuild": "npm run lint",
+    "build": "npm run build:js && npm run build:js:minified && node-sass scss/panzoomwidget.scss build/panzoomwidget.css",
     "build:js": "cat scripts/directives/*.js scripts/services/*.js | sed \"s/{VERSION}/$npm_package_version/g\" > build/panzoom.js",
     "build:js:watch": "watch 'npm run build:js' scripts",
     "prebuild:js:minified": "npm run build:js",
@@ -39,7 +39,7 @@
     "test:watch": "karma start test/karma.conf.js --auto-watch --no-single-run",
     "test:chrome": "karma start test/karma.conf.js --browsers Chrome",
     "test:chrome:watch": "karma start test/karma.conf.js --browsers Chrome --auto-watch --no-single-run",
-    "prerelease": "npm run build",
+    "prerelease": "npm run build:js && npm run build:js:minified",
     "release": "rm release/* && cp build/* release && cp release/* bin"
   },
   "repository": {
