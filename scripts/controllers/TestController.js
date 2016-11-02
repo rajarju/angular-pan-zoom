@@ -30,13 +30,21 @@ angular.module('test', ['panzoom', 'panzoomwidget'])
             zoomLevels: 12,
             neutralZoomLevel: 5,
             scalePerZoomLevel: 1.5,
-            initialZoomToFit: shark
+            disableZoomAnimation: true
+            // initialZoomToFit: shark
         };
 
         // The panzoom model should initialle be empty; it is initialized by the <panzoom>
         // directive. It can be used to read the current state of pan and zoom. Also, it will
         // contain methods for manipulating this state.
         $scope.panzoomModel = {};
+
+        $scope.panToShark = function () {
+            PanZoomService.getAPI('PanZoom').then(function (api) {
+                api.panTo(shark);
+            });
+        };
+
 
         $scope.zoomToShark = function () {
             PanZoomService.getAPI('PanZoom').then(function (api) {

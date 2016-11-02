@@ -22,8 +22,12 @@
     </div>
 
     <button type="button" class="btn" ng-click="zoomToShark()">Zoom to shark</button>
+    <button type="button" class="btn" ng-click="panToShark()">Pan to shark</button>
     <button type="button" class="btn" ng-click="zoomToChopper()">Zoom to chopper</button>
     <button type="button" class="btn" ng-click="zoomToLadder()">Zoom to ladder</button>
+    <pre>
+      {{ panzoomModel | json}}
+    </pre>
 </body>
 
 <script src="../bower_components/jQuery/dist/jquery.js"></script>

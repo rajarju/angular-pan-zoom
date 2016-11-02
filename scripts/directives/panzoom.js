@@ -138,6 +138,7 @@ angular.module('panzoom', ['monospaced.mousewheel'])
               };
             };
 
+
             if ($scope.config.initialZoomToFit) {
               $scope.base = calcZoomToFit($scope.config.initialZoomToFit);
             } else {
@@ -168,8 +169,6 @@ angular.module('panzoom', ['monospaced.mousewheel'])
             // private
 
             var syncModelToDOM = function() {
-
-              $scope.config.callback($scope.model);
 
               if ($scope.zoomAnimation) {
                 $scope.model.zoomLevel = $scope.base.zoomLevel + $scope.zoomAnimation
@@ -392,6 +391,17 @@ angular.module('panzoom', ['monospaced.mousewheel'])
                 x: (1 / s) * (pmark.x - t.x),
                 y: (1 / s) * (pmark.y - t.y)
               };
+            };
+
+            var panTo = function(rectangle) {
+              var zoomLevel = $scope.base.zoomLevel;
+              $scope.base = calcZoomToFit(rectangle);
+              // $scope.base.zoomLevel = zoomLevel;
+              changeZoomLevel(zoomLevel, getViewPosition({
+                x : rectangle.x + rectangle.width / 2,
+                y : rectangle.y + rectangle.height / 2
+              }));
+              syncModelToDOM();
             };
 
             var zoomToFit = function(rectangle) {
@@ -787,7 +797,8 @@ angular.module('panzoom', ['monospaced.mousewheel'])
               zoomOut: zoomOut,
               zoomToFit: zoomToFit,
               getViewPosition: getViewPosition,
-              getModelPosition: getModelPosition
+              getModelPosition: getModelPosition,
+              panTo : panTo
             };
 
           }

@@ -114,7 +114,6 @@ angular.module('panzoom', ['monospaced.mousewheel'])
             $scope.config.callback = $scope.config.callback ?
               $scope.config.callback : function() {};
 
-
             var calcZoomToFit = function(rect) {
               // let (W, H) denote the size of the viewport
               // let (w, h) denote the size of the rectangle to zoom to
@@ -138,6 +137,7 @@ angular.module('panzoom', ['monospaced.mousewheel'])
                 }
               };
             };
+
 
             if ($scope.config.initialZoomToFit) {
               $scope.base = calcZoomToFit($scope.config.initialZoomToFit);
@@ -169,8 +169,6 @@ angular.module('panzoom', ['monospaced.mousewheel'])
             // private
 
             var syncModelToDOM = function() {
-
-              $scope.config.callback($scope.model);
 
               if ($scope.zoomAnimation) {
                 $scope.model.zoomLevel = $scope.base.zoomLevel + $scope.zoomAnimation
@@ -393,6 +391,17 @@ angular.module('panzoom', ['monospaced.mousewheel'])
                 x: (1 / s) * (pmark.x - t.x),
                 y: (1 / s) * (pmark.y - t.y)
               };
+            };
+
+            var panTo = function(rectangle) {
+              var zoomLevel = $scope.base.zoomLevel;
+              $scope.base = calcZoomToFit(rectangle);
+              // $scope.base.zoomLevel = zoomLevel;
+              changeZoomLevel(zoomLevel, getViewPosition({
+                x : rectangle.x + rectangle.width / 2,
+                y : rectangle.y + rectangle.height / 2
+              }));
+              syncModelToDOM();
             };
 
             var zoomToFit = function(rectangle) {
@@ -788,7 +797,8 @@ angular.module('panzoom', ['monospaced.mousewheel'])
               zoomOut: zoomOut,
               zoomToFit: zoomToFit,
               getViewPosition: getViewPosition,
-              getModelPosition: getModelPosition
+              getModelPosition: getModelPosition,
+              panTo : panTo
             };
 
           }
@@ -820,165 +830,154 @@ angular.module('panzoom', ['monospaced.mousewheel'])
     }
   ]);
 angular.module('panzoomwidget', [])
-  .directive('panzoomwidget', ['$document', 'PanZoomService',
-    function($document, PanZoomService) {
-      var panzoomId;
+.directive('panzoomwidget', ['$document', 'PanZoomService',
+function ($document, PanZoomService) {
+  var panzoomId;
 
+  return {
+    restrict: 'E',
+    transclude: true,
+    compile: function compile(/*tElement, tAttrs, transclude*/) {
       return {
-        restrict: 'E',
-        transclude: true,
-        compile: function compile( /*tElement, tAttrs, transclude*/ ) {
-          return {
-            pre: function preLink( /*scope, iElement, iAttrs, controller*/ ) {},
-            post: function postLink(scope, iElement, iAttrs /*, controller*/ ) {
-              // we pick the value ourselves at this point, before the controller is instantiated,
-              // instead of passing it as a scope variable. This is to not force people to type quotes
-              // around the string.
-              // Note: we need to use iAttrs and not directly get the attribute on the element to
-              // be sure to get the interpolated value ({{foo}})
-              panzoomId = iAttrs.panzoomId;
+        pre: function preLink(/*scope, iElement, iAttrs, controller*/) { },
+        post: function postLink(scope, iElement, iAttrs /*, controller*/) {
+          // we pick the value ourselves at this point, before the controller is instantiated,
+          // instead of passing it as a scope variable. This is to not force people to type quotes
+          // around the string.
+          // Note: we need to use iAttrs and not directly get the attribute on the element to
+          // be sure to get the interpolated value ({{foo}})
+          panzoomId = iAttrs.panzoomId;
 
-              if (!panzoomId) {
-                throw 'Error in setup. You must define attribute panzoom-id on the <panzoomwidget> element in order to link it to the ' +
-                'id of the <panzoom> element. Ref: ';
+          if (!panzoomId) {
+            throw 'Error in setup. You must define attribute panzoom-id on the <panzoomwidget> element in order to link it to the ' +
+            'id of the <panzoom> element. Ref: ';
+          }
+          PanZoomService.getAPI(panzoomId).then(function (api) {
+            scope.model = api.model;
+            scope.config = api.config;
+
+            var zoomSliderWidget = iElement.find('.zoom-slider-widget');
+            var isDragging = false;
+
+            var sliderWidgetTopFromZoomLevel = function (zoomLevel) {
+              return ((scope.config.zoomLevels - zoomLevel - 1) * scope.widgetConfig.zoomLevelHeight);
+            };
+
+            var zoomLevelFromSliderWidgetTop = function (sliderWidgetTop) {
+              return scope.config.zoomLevels - 1 - sliderWidgetTop / scope.widgetConfig.zoomLevelHeight;
+            };
+
+            var getZoomLevelForMousePoint = function ($event) {
+              var sliderWidgetTop = $event.pageY - iElement.find('.zoom-slider').offset().top - scope.widgetConfig.zoomLevelHeight / 2;
+              return zoomLevelFromSliderWidgetTop(sliderWidgetTop);
+            };
+
+            scope.getZoomLevels = function () {
+              var zoomLevels = [];
+              for (var i = scope.config.zoomLevels - 1; i >= 0; i--) {
+                zoomLevels.push(i);
               }
-              PanZoomService.getAPI(panzoomId).then(function(api) {
-                scope.model = api.model;
-                scope.config = api.config;
+              return zoomLevels;
+            };
 
-                var zoomSliderWidget = iElement.find(
-                  '.zoom-slider-widget');
-                var isDragging = false;
+            scope.widgetConfig = {
+              zoomLevelHeight: 10
+            };
 
-                var sliderWidgetTopFromZoomLevel = function(zoomLevel) {
-                  return ((scope.config.zoomLevels - zoomLevel - 1) *
-                    scope.widgetConfig.zoomLevelHeight);
-                };
+            scope.zoomIn = function () {
+              api.zoomIn();
+            };
 
-                var zoomLevelFromSliderWidgetTop = function(
-                  sliderWidgetTop) {
-                  return scope.config.zoomLevels - 1 -
-                    sliderWidgetTop / scope.widgetConfig.zoomLevelHeight;
-                };
+            scope.zoomOut = function () {
+              api.zoomOut();
+            };
 
-                var getZoomLevelForMousePoint = function($event) {
-                  var sliderWidgetTop = $event.pageY - iElement.find(
-                      '.zoom-slider').offset().top - scope.widgetConfig
-                    .zoomLevelHeight / 2;
-                  return zoomLevelFromSliderWidgetTop(
-                    sliderWidgetTop);
-                };
+            scope.onClick = function ($event) {
+              var zoomLevel = getZoomLevelForMousePoint($event);
+              api.changeZoomLevel(zoomLevel);
+            };
 
-                scope.getZoomLevels = function() {
-                  var zoomLevels = [];
-                  for (var i = scope.config.zoomLevels - 1; i >= 0; i--) {
-                    zoomLevels.push(i);
-                  }
-                  return zoomLevels;
-                };
+            scope.onMousedown = function () {
+              isDragging = true;
 
-                scope.widgetConfig = {
-                  zoomLevelHeight: 10
-                };
+              $document.on('mousemove', scope.onMousemove);
+              $document.on('mouseup', scope.onMouseup);
+            };
 
-                scope.zoomIn = function() {
-                  api.zoomIn();
-                };
+            scope.onMousemove = function ($event) {
+              $event.preventDefault();
+              var zoomLevel = getZoomLevelForMousePoint($event);
+              api.changeZoomLevel(zoomLevel);
+            };
 
-                scope.zoomOut = function() {
-                  api.zoomOut();
-                };
+            scope.onMouseup = function () {
+              isDragging = false;
 
-                scope.onClick = function($event) {
-                  var zoomLevel = getZoomLevelForMousePoint($event);
-                  api.changeZoomLevel(zoomLevel);
-                };
+              $document.off('mousemove', scope.onMousemove);
+              $document.off('mouseup', scope.onMouseup);
+            };
 
-                scope.onMousedown = function() {
-                  isDragging = true;
+            scope.onMouseleave = function () {
+              isDragging = false;
+            };
 
-                  $document.on('mousemove', scope.onMousemove);
-                  $document.on('mouseup', scope.onMouseup);
-                };
-
-                scope.onMousemove = function($event) {
-                  $event.preventDefault();
-                  var zoomLevel = getZoomLevelForMousePoint($event);
-                  api.changeZoomLevel(zoomLevel);
-                };
-
-                scope.onMouseup = function() {
-                  isDragging = false;
-
-                  $document.off('mousemove', scope.onMousemove);
-                  $document.off('mouseup', scope.onMouseup);
-                };
-
-                scope.onMouseleave = function() {
-                  isDragging = false;
-                };
-
-                // $watch is not fast enough so we set up our own polling
-                setInterval(function() {
-                  zoomSliderWidget.css('top',
-                    sliderWidgetTopFromZoomLevel(scope.model.zoomLevel) +
-                    'px');
-                }, 25);
-              });
-            }
-          };
-        },
-        template: '<div class="panzoomwidget">' +
-          '<div ng-click="zoomIn()" ng-mouseenter="zoomToLevelIfDragging(config.zoomLevels - 1)" class="zoom-button zoom-button-in">+</div>' +
-          '<div class="zoom-slider" ng-mousedown="onMousedown()" ' +
-          'ng-click="onClick($event)">' +
-          '<div class="zoom-slider-widget" ng-style="{\'height\': widgetConfig.zoomLevelHeight - 2 +\'px\'}"></div>' +
-          '<div ng-repeat="zoomLevel in getZoomLevels()" ' +
-          ' class="zoom-level zoom-level-{{zoomLevel}}" ng-style="{\'height\': widgetConfig.zoomLevelHeight +\'px\'}"></div>' +
-          '</div>' +
-          '<div ng-click="zoomOut()" ng-mouseenter="zoomToLevelIfDragging(0)" class="zoom-button zoom-button-out">-</div>' +
-          '<div ng-transclude></div>' +
-          '</div>',
-        replace: true
+            // $watch is not fast enough so we set up our own polling
+            setInterval(function () {
+              zoomSliderWidget.css('top', sliderWidgetTopFromZoomLevel(scope.model.zoomLevel) + 'px');
+            }, 25);
+          });
+        }
       };
-    }
-  ]);
+    },
+    template: '<div class="panzoomwidget">' +
+    '<div ng-click="zoomIn()" ng-mouseenter="zoomToLevelIfDragging(config.zoomLevels - 1)" class="zoom-button zoom-button-in">+</div>' +
+    '<div class="zoom-slider" ng-mousedown="onMousedown()" ' +
+    'ng-click="onClick($event)">' +
+    '<div class="zoom-slider-widget" ng-style="{\'height\': widgetConfig.zoomLevelHeight - 2 +\'px\'}"></div>' +
+    '<div ng-repeat="zoomLevel in getZoomLevels()" ' +
+    ' class="zoom-level zoom-level-{{zoomLevel}}" ng-style="{\'height\': widgetConfig.zoomLevelHeight +\'px\'}"></div>' +
+    '</div>' +
+    '<div ng-click="zoomOut()" ng-mouseenter="zoomToLevelIfDragging(0)" class="zoom-button zoom-button-out">-</div>' +
+    '<div ng-transclude></div>' +
+    '</div>',
+    replace: true
+  };
+}]);
 angular.module('panzoom').factory('PanZoomService', ['$q',
-  function($q) {
-    // key -> deferred with promise of API
-    var panZoomAPIs = {};
+    function ($q) {
+        // key -> deferred with promise of API
+        var panZoomAPIs = {};
 
-    var registerAPI = function(key, panZoomAPI) {
-      if (!panZoomAPIs[key]) {
-        panZoomAPIs[key] = $q.defer();
-      }
+        var registerAPI = function (key, panZoomAPI) {
+            if (!panZoomAPIs[key]) {
+                panZoomAPIs[key] = $q.defer();
+            }
 
-      var deferred = panZoomAPIs[key];
-      if (deferred.hasBeenResolved) {
-        throw 'Internal error: attempt to register a panzoom API but key was already used. Did you declare two <panzoom> directives with the same id?';
-      } else {
-        deferred.resolve(panZoomAPI);
-        deferred.hasBeenResolved = true;
-      }
-    };
+            var deferred = panZoomAPIs[key];
+            if (deferred.hasBeenResolved) {
+                throw 'Internal error: attempt to register a panzoom API but key was already used. Did you declare two <panzoom> directives with the same id?';
+            } else {
+                deferred.resolve(panZoomAPI);
+                deferred.hasBeenResolved = true;
+            }
+        };
 
-    var unregisterAPI = function(key) {
-      delete panZoomAPIs[key];
-    };
+        var unregisterAPI = function (key) {
+            delete panZoomAPIs[key];
+        };
 
-    // this method returns a promise since it's entirely possible that it's called before the <panzoom> directive registered the API
-    var getAPI = function(key) {
-      if (!panZoomAPIs[key]) {
-        panZoomAPIs[key] = $q.defer();
-      }
+        // this method returns a promise since it's entirely possible that it's called before the <panzoom> directive registered the API
+        var getAPI = function (key) {
+            if (!panZoomAPIs[key]) {
+                panZoomAPIs[key] = $q.defer();
+            }
 
-      return panZoomAPIs[key].promise;
-    };
+            return panZoomAPIs[key].promise;
+        };
 
-    return {
-      registerAPI: registerAPI,
-      unregisterAPI: unregisterAPI,
-      getAPI: getAPI
-    };
-  }
-]);
+        return {
+            registerAPI: registerAPI,
+            unregisterAPI: unregisterAPI,
+            getAPI: getAPI
+        };
+}]);
