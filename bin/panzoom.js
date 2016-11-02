@@ -170,6 +170,8 @@ angular.module('panzoom', ['monospaced.mousewheel'])
 
             var syncModelToDOM = function() {
 
+              $scope.config.callback($scope.model);
+
               if ($scope.zoomAnimation) {
                 $scope.model.zoomLevel = $scope.base.zoomLevel + $scope.zoomAnimation
                   .deltaZoomLevel * $scope.zoomAnimation.progress;
