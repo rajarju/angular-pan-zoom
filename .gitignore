@@ -3,3 +3,4 @@ target
 build
 npm-debug.log
 bower_components
+.idea

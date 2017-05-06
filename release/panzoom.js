@@ -788,6 +788,64 @@ angular.module('panzoom', ['monospaced.mousewheel'])
                   zoomOut(clickPoint);
                 }
               }
+              else {
+
+                  $event.preventDefault();
+                  $event.stopPropagation();
+
+                  var now = jQuery.now();
+                  var timeSinceLastMouseEvent = (now - lastMouseEventTime) /
+                    1000;
+                  $scope.hasPanned = true;
+                  lastMouseEventTime = now;
+                  var dragDelta = {
+                    x: -$deltaX,
+                    y: $deltaY
+                  };
+
+                  var playGroundHeight = frameElement.height();
+                  var playGroundWidth = frameElement.width();
+                  var elementWidth = panElement.width();
+                  var elementHeight = panElement.height();
+
+                  var elementCenter = getViewPosition({
+                    x: elementWidth / 2 ,
+                    y: elementHeight / 2
+                  });
+
+                  var topLeftCornerView = getViewPosition({
+                    x: 0,
+                    y: 0
+                  });
+                  var bottomRightCornerView = getViewPosition({
+                    x: elementWidth,
+                    y: elementHeight
+                  });
+
+                  if (bottomRightCornerView.x < playGroundWidth/2 && dragDelta.x < 0) {
+                    dragDelta.x *= 0;
+                  }
+
+                  if (bottomRightCornerView.y < playGroundHeight/2 && dragDelta.y < 0) {
+                    dragDelta.y *= 0;
+                  }
+
+                  if (topLeftCornerView.x > playGroundWidth/2 && dragDelta.x >
+                    0) {
+                    dragDelta.x *= 0;
+                  }
+
+                  if (topLeftCornerView.y > playGroundHeight/2 && dragDelta
+                    .y > 0) {
+                      console.log(bottomRightCornerView.y, playGroundHeight, dragDelta.y);
+                    dragDelta.y *= 0;
+                  }
+
+
+                  pan(dragDelta);
+
+
+              }
             };
 
             // create public API
@@ -800,6 +858,7 @@ angular.module('panzoom', ['monospaced.mousewheel'])
               zoomToFit: zoomToFit,
               getViewPosition: getViewPosition,
               getModelPosition: getModelPosition,
+              pan: pan,
               panTo : panTo
             };
 
